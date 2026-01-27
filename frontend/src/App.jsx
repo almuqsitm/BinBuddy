@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import Login from './pages/Login'
@@ -24,7 +24,13 @@ const ProtectedRoute = ({ children, allowedRole }) => {
   return children
 }
 
-function App() {
+const App = () => {
+  const { userRole, checkSession } = useStore()
+
+  useEffect(() => {
+    checkSession()
+  }, [])
+
   return (
     <BrowserRouter>
       <Routes>
@@ -35,9 +41,7 @@ function App() {
         <Route 
           path="/janitor" 
           element={
-            <ProtectedRoute allowedRole="janitor">
-              <JanitorDashboard />
-            </ProtectedRoute>
+            userRole === 'janitor' ? <JanitorDashboard /> : <Navigate to="/" />
           } 
         />
         
