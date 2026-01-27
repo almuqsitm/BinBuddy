@@ -1,0 +1,4 @@
+backend/venv
+backend/.env
+backend/schema.sql
+backend/__pycache__
