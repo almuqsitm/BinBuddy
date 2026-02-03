@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore'
-import { Plus, UserPlus, Users, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import Navbar from '../components/Navbar'
 
 const SupervisorDashboard = () => {
   const { team, tasks, fetchTeam, connectJanitor, addTask, currentUser, login } = useStore()
@@ -13,6 +13,8 @@ const SupervisorDashboard = () => {
   
   // Mock Supervisor ID for MVP (In real app, comes from Auth)
   const supervisorId = "supervisor-123" 
+  
+  // ... useEffect and handlers ...
 
   useEffect(() => {
     login(supervisorId) // Mock Login
@@ -37,25 +39,9 @@ const SupervisorDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <header className="mb-10 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-        <div>
-           <h1 className="text-3xl font-bold text-gray-900">Supervisor Dashboard</h1>
-           <p className="text-gray-500">Manage your team and assignments</p>
-        </div>
-        
-        <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="font-bold text-gray-900">{currentUser?.first_name} {currentUser?.last_name}</p>
-              <p className="text-xs text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded inline-block">
-                 My Code: {currentUser?.friend_code || "..."}
-              </p>
-            </div>
-            <div className="bg-black text-white px-4 py-2 rounded-full font-bold">
-              Supervisor
-            </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      <Navbar title="Supervisor Dashboard" />
+      <div className="p-8">
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -168,6 +154,7 @@ const SupervisorDashboard = () => {
            </div>
         </section>
 
+      </div>
       </div>
     </div>
   )

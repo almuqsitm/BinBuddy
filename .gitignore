@@ -2,3 +2,5 @@ backend/venv
 backend/.env
 backend/schema.sql
 backend/__pycache__
+frontend/.env
+backend/schema.sql

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 // import { useStore } from '../store/useStore'
-import { Check, SprayCan, Trash2, Utensils, LayoutDashboard, ListTodo, Settings, User } from 'lucide-react'
+import Navbar from '../components/Navbar'
 import clsx from 'clsx'
+import { Check, SprayCan, Trash2, Utensils, LayoutDashboard, ListTodo, Settings, User } from 'lucide-react'
 
 const JanitorDashboard = () => {
   // const { tasks, fetchTasks, toggleTask, isLoading } = useStore()
@@ -52,16 +53,7 @@ const JanitorDashboard = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
       {/* TOP NAVBAR */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-1000">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">BinBuddy</h1>
-        
-        <div className="flex items-center gap-4">
-           {/* User Profile */}
-           <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
-              <User size={20} className="text-gray-600" />
-           </div>
-        </div>
-      </header>
+      <Navbar title="BinBuddy" />
 
       <div className="flex flex-1">
         {/* SIDEBAR */}
