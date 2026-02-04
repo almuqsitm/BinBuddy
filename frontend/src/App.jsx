@@ -4,6 +4,8 @@ import { useStore } from './store/useStore'
 import Login from './pages/Login'
 import JanitorDashboard from './pages/JanitorDashboard'
 
+import LandingPage from './pages/LandingPage'
+
 // Placeholders for now - we will build these files next!
 const SupervisorDashboard = () => <div className="p-10 text-2xl font-bold text-blue-600">Supervisor Dashboard</div>
 
@@ -13,12 +15,12 @@ const ProtectedRoute = ({ children, allowedRole }) => {
   const userRole = useStore((state) => state.userRole)
   
   if (!userRole) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/login" replace />
   }
 
   // Optional: Strict Role Checking (prevent Janitor from seeing Supervisor page)
   // if (allowedRole && userRole !== allowedRole) {
-  //   return <Navigate to="/" replace />
+  //   return <Navigate to="/login" replace />
   // }
 
   return children
@@ -34,14 +36,15 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Route: Login */}
-        <Route path="/" element={<Login />} />
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
 
         {/* Protected Routes */}
         <Route 
           path="/janitor" 
           element={
-            userRole === 'janitor' ? <JanitorDashboard /> : <Navigate to="/" />
+            userRole === 'janitor' ? <JanitorDashboard /> : <Navigate to="/login" />
           } 
         />
         

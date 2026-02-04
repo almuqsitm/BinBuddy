@@ -1,6 +1,21 @@
+# Backend
 backend/venv
 backend/.env
-backend/schema.sql
 backend/__pycache__
+
+# Frontend
 frontend/.env
-backend/schema.sql
+frontend/node_modules
+frontend/dist
+
+# Supabase Local (Docker)
+.branches
+.temp
+supabase/.branches
+supabase/.temp
+supabase/functions
+supabase/postgres_data
+
+# Keep the config and migrations
+!supabase/config.toml
+!supabase/seed.sql
