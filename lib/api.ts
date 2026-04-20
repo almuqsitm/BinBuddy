@@ -66,9 +66,23 @@ export type Task = {
   due_type: 'day' | 'week';
   due_date: string;
   location?: string;
+  task_type?: 'standard' | 'garbage_collection';
   completed: boolean;
   created_at: string;
   subtasks?: Subtask[];
+};
+
+export type GarbagePoint = {
+  id: string;
+  task_id: string;
+  label: string;
+  x_percent: number;
+  y_percent: number;
+  collected: boolean;
+  collected_by?: string;
+  collected_at?: string;
+  collector?: { first_name: string; last_name: string };
+  created_at: string;
 };
 
 export async function createTask(payload: {
@@ -78,6 +92,7 @@ export async function createTask(payload: {
   due_type: string;
   due_date: string;
   location?: string;
+  task_type?: string;
 }): Promise<Task> {
   const res = await fetch(`${API_BASE}/tasks`, {
     method: 'POST',
@@ -130,4 +145,20 @@ export async function toggleSubtaskComplete(subtaskId: string): Promise<Subtask>
 export async function deleteSubtask(subtaskId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/subtasks/${subtaskId}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete subtask');
+}
+
+export async function getOrGenerateGarbagePoints(taskId: string): Promise<GarbagePoint[]> {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}/garbage-points`);
+  if (!res.ok) throw new Error('Failed to load garbage points');
+  return res.json();
+}
+
+export async function collectGarbagePoint(pointId: string, userId: string): Promise<GarbagePoint> {
+  const res = await fetch(`${API_BASE}/garbage-points/${pointId}/collect`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId }),
+  });
+  if (!res.ok) throw new Error('Failed to collect point');
+  return res.json();
 }

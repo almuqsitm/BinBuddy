@@ -36,12 +36,39 @@ function TaskItem({
   onToggleSubtask: (taskId: string, subtask: Subtask) => void;
   prominent?: boolean;
 }) {
+  const isGarbage = task.task_type === 'garbage_collection';
   const subtasks = task.subtasks ?? [];
   const hasSubtasks = subtasks.length > 0;
   const allDone = hasSubtasks && subtasks.every((s) => s.completed);
   const parentDisabled = hasSubtasks && !allDone;
 
   const sortedSubtasks = [...subtasks].sort((a, b) => a.order_index - b.order_index);
+
+  if (isGarbage) {
+    return (
+      <TouchableOpacity
+        style={[styles.taskCard, prominent && styles.taskCardProminent, styles.taskCardGarbage]}
+        onPress={() => router.push({ pathname: '/garbage-map/[task_id]' as any, params: { task_id: task.id, task_title: task.title } })}
+        accessibilityRole="button"
+        accessibilityLabel={`Open garbage map for ${task.title}`}>
+        <View style={styles.taskRow}>
+          <Text style={[styles.garbageEmoji, prominent && styles.garbageEmojiProminent]}>
+            {task.completed ? '✅' : '🗑️'}
+          </Text>
+          <View style={styles.taskInfo}>
+            <Text style={[styles.taskTitle, prominent && styles.taskTitleProminent, task.completed && styles.taskTitleDone]}>
+              {task.title}
+            </Text>
+            {!!task.location && <Text style={[styles.locationTag, prominent && styles.locationTagProminent]}>📍 {task.location}</Text>}
+            <Text style={[styles.progressText, prominent && styles.progressTextProminent]}>
+              {task.completed ? 'All garbage collected' : 'Tap to open floor map'}
+            </Text>
+          </View>
+          <Text style={styles.mapArrow}>›</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={[styles.taskCard, prominent && styles.taskCardProminent]}>
@@ -369,6 +396,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  taskCardGarbage:    { borderLeftColor: '#E53935' },
+  garbageEmoji:       { fontSize: 22, marginRight: 12, marginTop: 1 },
+  garbageEmojiProminent: { fontSize: 30, marginRight: 14, marginTop: 2 },
+  mapArrow:           { fontSize: 24, color: Green.light, marginLeft: 4 },
   taskCardProminent:  {
     padding: 18,
     borderRadius: 16,

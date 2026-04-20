@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Link } from 'expo-router';
 
 import { Green } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -21,9 +21,10 @@ export default function JanitorDetailScreen() {
 
   const [tasks, setTasks]             = useState<Task[]>([]);
   const [loading, setLoading]         = useState(true);
-  const [showForm, setShowForm]       = useState(false);
-  const [taskTitle, setTaskTitle]     = useState('');
-  const [location, setLocation]       = useState('');
+  const [showForm, setShowForm]         = useState(false);
+  const [taskTitle, setTaskTitle]       = useState('');
+  const [location, setLocation]         = useState('');
+  const [taskType, setTaskType]         = useState<'standard' | 'garbage_collection'>('standard');
   const [subtaskInputs, setSubtaskInputs] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [submitting, setSubmitting]   = useState(false);
@@ -69,9 +70,12 @@ export default function JanitorDetailScreen() {
         due_type,
         due_date: selectedDate,
         location: location.trim(),
+        task_type: taskType,
       });
 
-      const nonEmptySubtasks = subtaskInputs.map((s) => s.trim()).filter(Boolean);
+      const nonEmptySubtasks = taskType === 'standard'
+        ? subtaskInputs.map((s) => s.trim()).filter(Boolean)
+        : [];
       const createdSubtasks = await Promise.all(
         nonEmptySubtasks.map((title, i) => createSubtask(created.id, title, i))
       );
@@ -79,6 +83,7 @@ export default function JanitorDetailScreen() {
       setTasks((prev) => [...prev, { ...created, subtasks: createdSubtasks }]);
       setTaskTitle('');
       setLocation('');
+      setTaskType('standard');
       setSubtaskInputs([]);
       setShowForm(false);
     } catch (e: any) {
@@ -114,12 +119,28 @@ export default function JanitorDetailScreen() {
       {showForm && (
         <ScrollView style={styles.formScroll} keyboardShouldPersistTaps="handled">
           <View style={styles.form}>
+            <Text style={styles.formLabel}>Task Type</Text>
+            <View style={styles.typeRow}>
+              {(['standard', 'garbage_collection'] as const).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.typeBtn, taskType === t && styles.typeBtnActive]}
+                  onPress={() => setTaskType(t)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: taskType === t }}>
+                  <Text style={[styles.typeBtnText, taskType === t && styles.typeBtnTextActive]}>
+                    {t === 'standard' ? 'Standard' : 'Garbage Collection'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <Text style={styles.formLabel}>Task Title</Text>
             <TextInput
               style={styles.input}
               value={taskTitle}
               onChangeText={setTaskTitle}
-              placeholder="e.g. Clean the bathroom"
+              placeholder={taskType === 'garbage_collection' ? 'e.g. Collect garbage' : 'e.g. Clean the bathroom'}
               returnKeyType="next"
               accessibilityLabel="Task title"
             />
@@ -134,8 +155,18 @@ export default function JanitorDetailScreen() {
               accessibilityLabel="Location"
             />
 
+            {taskType === 'garbage_collection' && (
+              <View style={styles.gcNote}>
+                <Text style={styles.gcNoteText}>
+                  🗺️ A floor map with garbage locations will be auto-generated for the janitor.
+                </Text>
+              </View>
+            )}
+
+            {taskType === 'standard' && (
             <Text style={styles.formLabel}>Steps (optional)</Text>
-            {subtaskInputs.map((val, i) => (
+            )}
+            {taskType === 'standard' && subtaskInputs.map((val, i) => (
               <View key={i} style={styles.subtaskRow}>
                 <TextInput
                   style={[styles.input, styles.subtaskInput]}
@@ -154,9 +185,10 @@ export default function JanitorDetailScreen() {
                 </TouchableOpacity>
               </View>
             ))}
-            <TouchableOpacity onPress={addSubtaskField} style={styles.addStepBtn}>
+            {taskType === 'standard' && <TouchableOpacity onPress={addSubtaskField} style={styles.addStepBtn}>
               <Text style={styles.addStepText}>+ Add step</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
+
 
             <Text style={[styles.formLabel, { marginTop: 12 }]}>Schedule</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dayScroll}>
@@ -211,6 +243,26 @@ export default function JanitorDetailScreen() {
                   <Text style={styles.emptyDayText}>No tasks</Text>
                 ) : (
                   byDate[iso].map((t) => (
+                    t.task_type === 'garbage_collection' ? (
+                      <TouchableOpacity
+                        key={t.id}
+                        style={[styles.taskCard, styles.taskCardGarbage]}
+                        onPress={() => router.push({
+                          pathname: '/garbage-map/[task_id]' as any,
+                          params: { task_id: t.id, task_title: t.title },
+                        })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View garbage map for ${t.title}`}>
+                        <View style={styles.taskCardHeader}>
+                          {t.completed && <Text style={styles.garbageEmoji}>✅</Text>}
+                          <View style={styles.taskCardInfo}>
+                            <Text style={[styles.taskTitle, t.completed && styles.taskTitleDone]}>{t.title}</Text>
+                            {!!t.location && <Text style={styles.locationTag}>📍 {t.location}</Text>}
+                            <Text style={styles.viewMapHint}>Tap to view collection map →</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
                     <View key={t.id} style={styles.taskCard}>
                       <View style={styles.taskCardHeader}>
                         <View style={[styles.checkbox, t.completed && styles.checkboxDone]}>
@@ -242,7 +294,8 @@ export default function JanitorDetailScreen() {
                         </View>
                       )}
                     </View>
-                  ))
+                    ) // end inner ternary false branch
+                  ))  // closes arrow fn + .map(
                 )}
               </View>
             ))}
@@ -310,6 +363,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   removeBtnText:      { color: '#C62828', fontSize: 18, fontWeight: 'bold', lineHeight: 20 },
+  taskCardGarbage:    { borderLeftWidth: 4, borderLeftColor: '#E53935' },
+  garbageEmoji:       { fontSize: 22, marginRight: 10, marginTop: 1 },
+  viewMapHint:        { fontSize: 12, color: Green.primary, marginTop: 3, fontWeight: '600' },
+  typeRow:            { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  typeBtn:            { flex: 1, padding: 10, borderRadius: 10, borderWidth: 1.5, borderColor: Green.light, alignItems: 'center' },
+  typeBtnActive:      { backgroundColor: Green.primary, borderColor: Green.primary },
+  typeBtnText:        { fontSize: 12, fontWeight: '600', color: Green.primary },
+  typeBtnTextActive:  { color: '#fff' },
+  gcNote:             { backgroundColor: Green.surface, borderRadius: 8, padding: 10, marginBottom: 14 },
+  gcNoteText:         { fontSize: 12, color: Green.dark },
   addStepBtn:         {
     borderWidth: 1.5,
     borderColor: Green.light,
