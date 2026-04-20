@@ -12,7 +12,7 @@ app = FastAPI(title="BinBuddy API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -67,6 +67,18 @@ def create_user(body: CreateRequest):
     return result.data[0]
 
 
+@app.get("/users/janitors")
+def list_janitors():
+    result = (
+        supabase.table("users")
+        .select("*")
+        .eq("role", "janitor")
+        .order("first_name")
+        .execute()
+    )
+    return result.data
+
+
 @app.get("/users/{user_id}")
 def get_user(user_id: str):
     result = (
@@ -77,4 +89,67 @@ def get_user(user_id: str):
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="User not found")
+    return result.data[0]
+
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    assigned_to: str
+    assigned_by: str
+    due_type: str   # "day" | "week"
+    due_date: str   # ISO date YYYY-MM-DD
+
+
+@app.post("/tasks")
+def create_task(body: CreateTaskRequest):
+    due_type = body.due_type.lower()
+    if due_type not in ("day", "week"):
+        raise HTTPException(status_code=422, detail="due_type must be day or week")
+    result = (
+        supabase.table("tasks")
+        .insert({
+            "title": body.title.strip(),
+            "assigned_to": body.assigned_to,
+            "assigned_by": body.assigned_by,
+            "due_type": due_type,
+            "due_date": body.due_date,
+            "completed": False,
+        })
+        .execute()
+    )
+    return result.data[0]
+
+
+@app.get("/tasks/user/{user_id}")
+def get_user_tasks(user_id: str, from_date: str = None, to_date: str = None):
+    query = (
+        supabase.table("tasks")
+        .select("*")
+        .eq("assigned_to", user_id)
+    )
+    if from_date:
+        query = query.gte("due_date", from_date)
+    if to_date:
+        query = query.lte("due_date", to_date)
+    result = query.order("due_date").execute()
+    return result.data
+
+
+@app.patch("/tasks/{task_id}/complete")
+def toggle_task_complete(task_id: str):
+    current = (
+        supabase.table("tasks")
+        .select("completed")
+        .eq("id", task_id)
+        .execute()
+    )
+    if not current.data:
+        raise HTTPException(status_code=404, detail="Task not found")
+    new_state = not current.data[0]["completed"]
+    result = (
+        supabase.table("tasks")
+        .update({"completed": new_state})
+        .eq("id", task_id)
+        .execute()
+    )
     return result.data[0]
