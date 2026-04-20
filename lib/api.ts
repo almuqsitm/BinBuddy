@@ -49,6 +49,15 @@ export async function getJanitors(): Promise<User[]> {
   return res.json();
 }
 
+export type Subtask = {
+  id: string;
+  task_id: string;
+  title: string;
+  completed: boolean;
+  order_index: number;
+  created_at: string;
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -56,8 +65,10 @@ export type Task = {
   assigned_by: string;
   due_type: 'day' | 'week';
   due_date: string;
+  location?: string;
   completed: boolean;
   created_at: string;
+  subtasks?: Subtask[];
 };
 
 export async function createTask(payload: {
@@ -66,6 +77,7 @@ export async function createTask(payload: {
   assigned_by: string;
   due_type: string;
   due_date: string;
+  location?: string;
 }): Promise<Task> {
   const res = await fetch(`${API_BASE}/tasks`, {
     method: 'POST',
@@ -93,4 +105,29 @@ export async function toggleTaskComplete(taskId: string): Promise<Task> {
   const res = await fetch(`${API_BASE}/tasks/${taskId}/complete`, { method: 'PATCH' });
   if (!res.ok) throw new Error('Failed to update task');
   return res.json();
+}
+
+export async function createSubtask(
+  taskId: string,
+  title: string,
+  orderIndex: number,
+): Promise<Subtask> {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}/subtasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, order_index: orderIndex }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function toggleSubtaskComplete(subtaskId: string): Promise<Subtask> {
+  const res = await fetch(`${API_BASE}/subtasks/${subtaskId}/complete`, { method: 'PATCH' });
+  if (!res.ok) throw new Error('Failed to update subtask');
+  return res.json();
+}
+
+export async function deleteSubtask(subtaskId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/subtasks/${subtaskId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete subtask');
 }
