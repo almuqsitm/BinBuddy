@@ -29,10 +29,12 @@ function TaskItem({
   task,
   onToggleTask,
   onToggleSubtask,
+  prominent = false,
 }: {
   task: Task;
   onToggleTask: (id: string) => void;
   onToggleSubtask: (taskId: string, subtask: Subtask) => void;
+  prominent?: boolean;
 }) {
   const subtasks = task.subtasks ?? [];
   const hasSubtasks = subtasks.length > 0;
@@ -42,7 +44,7 @@ function TaskItem({
   const sortedSubtasks = [...subtasks].sort((a, b) => a.order_index - b.order_index);
 
   return (
-    <View style={styles.taskCard}>
+    <View style={[styles.taskCard, prominent && styles.taskCardProminent]}>
       {/* Parent task row */}
       <TouchableOpacity
         style={styles.taskRow}
@@ -53,24 +55,31 @@ function TaskItem({
         accessibilityLabel={task.title}>
         <View style={[
           styles.checkbox,
+          prominent && styles.checkboxProminent,
           task.completed && styles.checkboxDone,
           parentDisabled && styles.checkboxLocked,
         ]}>
           {task.completed
-            ? <Text style={styles.checkmark}>✓</Text>
+            ? <Text style={[styles.checkmark, prominent && styles.checkmarkProminent]}>✓</Text>
             : parentDisabled
               ? <Text style={styles.lockIcon}>🔒</Text>
               : null}
         </View>
         <View style={styles.taskInfo}>
-          <Text style={[styles.taskTitle, task.completed && styles.taskTitleDone]}>
+          <Text style={[
+            styles.taskTitle,
+            prominent && styles.taskTitleProminent,
+            task.completed && styles.taskTitleDone,
+          ]}>
             {task.title}
           </Text>
           {!!task.location && (
-            <Text style={styles.locationTag}>📍 {task.location}</Text>
+            <Text style={[styles.locationTag, prominent && styles.locationTagProminent]}>
+              📍 {task.location}
+            </Text>
           )}
           {hasSubtasks && (
-            <Text style={styles.progressText}>
+            <Text style={[styles.progressText, prominent && styles.progressTextProminent]}>
               {subtasks.filter((s) => s.completed).length}/{subtasks.length} steps done
             </Text>
           )}
@@ -79,19 +88,27 @@ function TaskItem({
 
       {/* Subtask rows */}
       {hasSubtasks && (
-        <View style={styles.subtaskList}>
+        <View style={[styles.subtaskList, prominent && styles.subtaskListProminent]}>
           {sortedSubtasks.map((s) => (
             <TouchableOpacity
               key={s.id}
-              style={styles.subtaskRow}
+              style={[styles.subtaskRow, prominent && styles.subtaskRowProminent]}
               onPress={() => onToggleSubtask(task.id, s)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: s.completed }}
               accessibilityLabel={s.title}>
-              <View style={[styles.subtaskBox, s.completed && styles.subtaskBoxDone]}>
-                {s.completed && <Text style={styles.subtaskCheckmark}>✓</Text>}
+              <View style={[
+                styles.subtaskBox,
+                prominent && styles.subtaskBoxProminent,
+                s.completed && styles.subtaskBoxDone,
+              ]}>
+                {s.completed && <Text style={[styles.subtaskCheckmark, prominent && styles.subtaskCheckmarkProminent]}>✓</Text>}
               </View>
-              <Text style={[styles.subtaskText, s.completed && styles.subtaskTextDone]}>
+              <Text style={[
+                styles.subtaskText,
+                prominent && styles.subtaskTextProminent,
+                s.completed && styles.subtaskTextDone,
+              ]}>
                 {s.title}
               </Text>
             </TouchableOpacity>
@@ -168,9 +185,14 @@ function JanitorHome() {
     );
   };
 
+  const [showAllTasks, setShowAllTasks]       = useState(false);
+  const [showCompleted, setShowCompleted]     = useState(false);
+
   const weekDates = getWeekDates();
   const incompleteTasks = tasks.filter((t) => !t.completed);
   const completedTasks  = tasks.filter((t) => t.completed);
+  const visibleTasks    = showAllTasks ? incompleteTasks : incompleteTasks.slice(0, 2);
+  const hiddenCount     = incompleteTasks.length - 2;
   const byDate = weekDates.reduce<Record<string, Task[]>>((acc, { iso }) => {
     acc[iso] = tasks.filter((t) => t.due_date === iso);
     return acc;
@@ -199,13 +221,36 @@ function JanitorHome() {
             <Text style={styles.emptyText}>No tasks for today.</Text>
           ) : (
             <>
-              {incompleteTasks.map((t) => (
-                <TaskItem key={t.id} task={t} onToggleTask={handleToggleTask} onToggleSubtask={handleToggleSubtask} />
+              {visibleTasks.map((t, i) => (
+                <TaskItem key={t.id} task={t} onToggleTask={handleToggleTask} onToggleSubtask={handleToggleSubtask} prominent={i < 2} />
               ))}
+
+              {/* Show more / show less */}
+              {incompleteTasks.length > 2 && (
+                <TouchableOpacity
+                  style={styles.showMoreBtn}
+                  onPress={() => setShowAllTasks((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showAllTasks ? 'Show fewer tasks' : `Show ${hiddenCount} more tasks`}>
+                  <Text style={styles.showMoreText}>
+                    {showAllTasks ? '↑ Show less' : `↓ ${hiddenCount} more task${hiddenCount !== 1 ? 's' : ''}`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Completed section (collapsed by default) */}
               {completedTasks.length > 0 && (
                 <>
-                  <Text style={styles.sectionLabel}>Completed</Text>
-                  {completedTasks.map((t) => (
+                  <TouchableOpacity
+                    style={styles.completedHeader}
+                    onPress={() => setShowCompleted((v) => !v)}
+                    accessibilityRole="button"
+                    accessibilityLabel={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}>
+                    <Text style={styles.completedHeaderText}>
+                      {showCompleted ? '▾' : '▸'} Completed ({completedTasks.length})
+                    </Text>
+                  </TouchableOpacity>
+                  {showCompleted && completedTasks.map((t) => (
                     <TaskItem key={t.id} task={t} onToggleTask={handleToggleTask} onToggleSubtask={handleToggleSubtask} />
                   ))}
                 </>
@@ -324,6 +369,16 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  taskCardProminent:  {
+    padding: 18,
+    borderRadius: 16,
+    borderLeftWidth: 5,
+    borderLeftColor: Green.primary,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    marginBottom: 12,
+  },
   taskRow:            { flexDirection: 'row', alignItems: 'flex-start' },
   taskInfo:           { flex: 1 },
   checkbox:           {
@@ -337,17 +392,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  checkboxProminent:  { width: 32, height: 32, borderRadius: 16, borderWidth: 2.5, marginRight: 14, marginTop: 2 },
   checkboxDone:       { backgroundColor: Green.primary },
   checkboxLocked:     { borderColor: '#CCC', backgroundColor: '#F5F5F5' },
   checkmark:          { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  checkmarkProminent: { fontSize: 17 },
   lockIcon:           { fontSize: 11 },
   taskTitle:          { fontSize: 15, color: '#222', fontWeight: '600' },
+  taskTitleProminent: { fontSize: 20, fontWeight: '700', color: Green.dark },
   taskTitleDone:      { color: '#aaa', textDecorationLine: 'line-through' },
   locationTag:        { fontSize: 12, color: '#888', marginTop: 2 },
+  locationTagProminent: { fontSize: 14, marginTop: 4 },
   progressText:       { fontSize: 11, color: Green.secondary, marginTop: 3, fontWeight: '600' },
+  progressTextProminent: { fontSize: 13, marginTop: 5 },
 
   subtaskList:        { marginTop: 8, paddingLeft: 36, gap: 8 },
+  subtaskListProminent: { marginTop: 12, paddingLeft: 46, gap: 12 },
   subtaskRow:         { flexDirection: 'row', alignItems: 'center' },
+  subtaskRowProminent: { paddingVertical: 2 },
   subtaskBox:         {
     width: 18,
     height: 18,
@@ -358,9 +420,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  subtaskBoxProminent: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, marginRight: 12 },
   subtaskBoxDone:     { backgroundColor: Green.primary, borderColor: Green.primary },
   subtaskCheckmark:   { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  subtaskCheckmarkProminent: { fontSize: 13 },
   subtaskText:        { fontSize: 14, color: '#444' },
+  subtaskTextProminent: { fontSize: 16, color: '#333' },
   subtaskTextDone:    { color: '#bbb', textDecorationLine: 'line-through' },
 
   dayHeader:          { backgroundColor: Green.light, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8, marginTop: 8 },
@@ -388,6 +453,23 @@ const styles = StyleSheet.create({
   janitorName:        { flex: 1, fontSize: 16, fontWeight: '600', color: '#222' },
   chevron:            { fontSize: 22, color: Green.light },
 
+  showMoreBtn:        {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 4,
+    borderWidth: 1.5,
+    borderColor: Green.light,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+  },
+  showMoreText:       { color: Green.primary, fontWeight: '600', fontSize: 14 },
+  completedHeader:    {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  completedHeaderText: { fontSize: 13, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5 },
   sectionLabel:       { fontSize: 12, fontWeight: '700', color: '#aaa', marginVertical: 8, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1 },
   emptyText:          { textAlign: 'center', color: '#aaa', fontSize: 15, marginTop: 60 },
 });
