@@ -27,6 +27,15 @@ export const Colors = {
   },
 };
 
+export const Green = {
+  primary:   '#2E7D32',
+  secondary: '#4CAF50',
+  light:     '#A5D6A7',
+  surface:   '#E8F5E9',
+  onPrimary: '#FFFFFF',
+  dark:      '#1B5E20',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
