@@ -13,12 +13,13 @@ import { router, useLocalSearchParams, Link } from 'expo-router';
 import { Green } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { type Task, getUserTasks, createTask, createSubtask, toggleTaskComplete } from '@/lib/api';
-import { getTodayISO, getWeekDates, getWeekRange } from '@/utils/dates';
+import { getTodayISO, getWeekDates, getWeekRange, getWeekLabel, formatWeekRange } from '@/utils/dates';
 
 export default function JanitorDetailScreen() {
   const { user } = useAuth();
   const { id: janitorId, name: janitorName } = useLocalSearchParams<{ id: string; name: string }>();
 
+  const [weekOffset, setWeekOffset]   = useState(0);
   const [tasks, setTasks]             = useState<Task[]>([]);
   const [loading, setLoading]         = useState(true);
   const [showForm, setShowForm]         = useState(false);
@@ -31,8 +32,8 @@ export default function JanitorDetailScreen() {
   const [error, setError]             = useState('');
 
   const today     = getTodayISO();
-  const weekDates = getWeekDates();
-  const { from, to } = getWeekRange();
+  const weekDates = getWeekDates(weekOffset);
+  const { from, to } = getWeekRange(weekOffset);
 
   const load = () => {
     setLoading(true);
@@ -41,7 +42,13 @@ export default function JanitorDetailScreen() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [janitorId]);
+  useEffect(load, [janitorId, weekOffset]);
+
+  // When navigating weeks, move the default selected date to that week
+  useEffect(() => {
+    const dates = getWeekDates(weekOffset);
+    setSelectedDate(weekOffset === 0 ? getTodayISO() : dates[0].iso);
+  }, [weekOffset]);
 
   const handleToggle = async (taskId: string) => {
     const updated = await toggleTaskComplete(taskId);
@@ -231,6 +238,27 @@ export default function JanitorDetailScreen() {
         loading ? (
           <ActivityIndicator color={Green.primary} style={{ marginTop: 40 }} />
         ) : (
+          <>
+          <View style={styles.weekNavRow}>
+            <TouchableOpacity
+              style={styles.weekNavBtn}
+              onPress={() => setWeekOffset((o) => o - 1)}
+              accessibilityRole="button"
+              accessibilityLabel="Previous week">
+              <Text style={styles.weekNavArrow}>‹</Text>
+            </TouchableOpacity>
+            <View style={styles.weekNavCenter}>
+              <Text style={styles.weekNavLabel}>{getWeekLabel(weekOffset)}</Text>
+              <Text style={styles.weekNavRange}>{formatWeekRange(weekOffset)}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.weekNavBtn}
+              onPress={() => setWeekOffset((o) => o + 1)}
+              accessibilityRole="button"
+              accessibilityLabel="Next week">
+              <Text style={styles.weekNavArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
           <ScrollView contentContainerStyle={styles.listContent}>
             {weekDates.map(({ iso, short, date }) => (
               <View key={iso}>
@@ -300,6 +328,7 @@ export default function JanitorDetailScreen() {
               </View>
             ))}
           </ScrollView>
+          </>
         )
       )}
     </View>
@@ -403,6 +432,13 @@ const styles = StyleSheet.create({
   submitBtn:          { backgroundColor: Green.primary, borderRadius: 10, padding: 14, alignItems: 'center' },
   submitBtnDisabled:  { opacity: 0.6 },
   submitBtnText:      { color: Green.onPrimary, fontWeight: '700', fontSize: 15 },
+
+  weekNavRow:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, backgroundColor: Green.surface },
+  weekNavBtn:         { padding: 12 },
+  weekNavArrow:       { fontSize: 26, color: Green.primary, fontWeight: '600' },
+  weekNavCenter:      { flex: 1, alignItems: 'center' },
+  weekNavLabel:       { fontSize: 15, fontWeight: '700', color: Green.dark },
+  weekNavRange:       { fontSize: 12, color: '#888', marginTop: 1 },
 
   listContent:        { padding: 12 },
   dayHeader:          { backgroundColor: Green.light, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 6, marginTop: 8 },

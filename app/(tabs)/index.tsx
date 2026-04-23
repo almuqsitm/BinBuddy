@@ -21,7 +21,7 @@ import {
   getJanitors,
   type User,
 } from '@/lib/api';
-import { getTodayISO, getWeekDates, getWeekRange } from '@/utils/dates';
+import { getTodayISO, getWeekDates, getWeekRange, getWeekLabel, formatWeekRange } from '@/utils/dates';
 import VoiceAssistantModal from '@/components/VoiceAssistantModal';
 
 // ─── Task item with optional subtasks ─────────────────────────────────────────
@@ -154,9 +154,10 @@ function JanitorHome() {
   const [tab, setTab] = useState<'today' | 'week'>('today');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const today = getTodayISO();
-  const { from, to } = getWeekRange();
+  const { from, to } = getWeekRange(weekOffset);
 
   useEffect(() => {
     if (!user) return;
@@ -166,7 +167,7 @@ function JanitorHome() {
     getUserTasks(user.id, fromDate, toDate)
       .then(setTasks)
       .finally(() => setLoading(false));
-  }, [tab, user]);
+  }, [tab, user, weekOffset]);
 
   const handleToggleTask = async (taskId: string) => {
     const updated = await toggleTaskComplete(taskId);
@@ -238,7 +239,7 @@ function JanitorHome() {
     );
   };
 
-  const weekDates = getWeekDates();
+  const weekDates = getWeekDates(weekOffset);
   const incompleteTasks = tasks.filter((t) => !t.completed);
   const completedTasks  = tasks.filter((t) => t.completed);
   const visibleTasks    = showAllTasks ? incompleteTasks : incompleteTasks.slice(0, 2);
@@ -317,6 +318,27 @@ function JanitorHome() {
           )}
         </ScrollView>
       ) : (
+        <>
+        <View style={styles.weekNavRow}>
+          <TouchableOpacity
+            style={styles.weekNavBtn}
+            onPress={() => setWeekOffset((o) => o - 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Previous week">
+            <Text style={styles.weekNavArrow}>‹</Text>
+          </TouchableOpacity>
+          <View style={styles.weekNavCenter}>
+            <Text style={styles.weekNavLabel}>{getWeekLabel(weekOffset)}</Text>
+            <Text style={styles.weekNavRange}>{formatWeekRange(weekOffset)}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.weekNavBtn}
+            onPress={() => setWeekOffset((o) => o + 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Next week">
+            <Text style={styles.weekNavArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
         <ScrollView contentContainerStyle={styles.listContent}>
           {weekDates.map(({ iso, short, date }) => (
             <View key={iso}>
@@ -335,6 +357,7 @@ function JanitorHome() {
             </View>
           ))}
         </ScrollView>
+        </>
       )}
     </SafeAreaView>
 
@@ -545,6 +568,18 @@ const styles = StyleSheet.create({
   completedHeaderText: { fontSize: 13, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5 },
   sectionLabel:       { fontSize: 12, fontWeight: '700', color: '#aaa', marginVertical: 8, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1 },
   emptyText:          { textAlign: 'center', color: '#aaa', fontSize: 15, marginTop: 60 },
+
+  weekNavRow:     {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingBottom: 4,
+  },
+  weekNavBtn:     { padding: 12 },
+  weekNavArrow:   { fontSize: 26, color: Green.primary, fontWeight: '600' },
+  weekNavCenter:  { flex: 1, alignItems: 'center' },
+  weekNavLabel:   { fontSize: 15, fontWeight: '700', color: Green.dark },
+  weekNavRange:   { fontSize: 12, color: '#888', marginTop: 1 },
 
   fab: {
     position: 'absolute',
