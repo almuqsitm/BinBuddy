@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import httpx
+import json
 import os
+from openai import OpenAI
 
 load_dotenv()
 
@@ -20,6 +23,8 @@ supabase: Client = create_client(
     os.environ["SUPABASE_URL"],
     os.environ["SUPABASE_KEY"],
 )
+
+openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 
 class LookupRequest(BaseModel):
@@ -273,3 +278,111 @@ def collect_garbage_point(point_id: str, body: CollectGarbageRequest):
         .execute()
     )
     return result.data[0]
+
+
+# ── Voice assistant ────────────────────────────────────────────────────────────
+
+class VoiceChatRequest(BaseModel):
+    message: str
+    tasks: list
+
+
+@app.post("/voice/transcribe")
+async def voice_transcribe(file: UploadFile = File(...)):
+    audio_bytes = await file.read()
+    deepgram_key = os.environ["DEEPGRAM_API_KEY"]
+    try:
+        r = httpx.post(
+            "https://api.deepgram.com/v1/listen?model=nova-2&language=en",
+            headers={
+                "Authorization": f"Token {deepgram_key}",
+                "Content-Type": file.content_type or "audio/m4a",
+            },
+            content=audio_bytes,
+            timeout=30,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Deepgram request failed: {e}")
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Deepgram error: {r.text}")
+    data = r.json()
+    try:
+        transcript = data["results"]["channels"][0]["alternatives"][0]["transcript"]
+    except (KeyError, IndexError):
+        transcript = ""
+    if not transcript.strip():
+        raise HTTPException(status_code=502, detail="No speech detected")
+    return {"transcript": transcript}
+
+
+@app.post("/voice/chat")
+def voice_chat(body: VoiceChatRequest):
+    task_lines = []
+    for t in body.tasks:
+        location = t.get('location') or ''
+        loc_part = f" location=\"{location}\"" if location else ""
+        line = f"- Task id={t.get('id')} title=\"{t.get('title')}\"{loc_part} completed={t.get('completed')}"
+        subtasks = t.get("subtasks") or []
+        for s in subtasks:
+            line += f"\n    - Subtask id={s.get('id')} title=\"{s.get('title')}\" completed={s.get('completed')}"
+        task_lines.append(line)
+    tasks_context = "\n".join(task_lines) if task_lines else "No tasks assigned."
+
+    system_prompt = f"""You are BinBuddy, a helpful assistant for a janitor. Keep all replies simple (Grade 6 reading level), use numbered steps, and be brief (max 5 sentences or steps). Never use jargon.
+
+The janitor's current tasks are:
+{tasks_context}
+
+If the janitor says they finished or completed a task or subtask, identify which one from the list above and include the action field.
+
+Always respond with valid JSON only in this exact shape:
+{{"reply": "<your spoken reply>", "action": null}}
+or
+{{"reply": "<your spoken reply>", "action": {{"type": "complete_task", "id": "<task id>"}}}}
+or
+{{"reply": "<your spoken reply>", "action": {{"type": "complete_subtask", "id": "<subtask id>"}}}}"""
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            max_tokens=300,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": body.message},
+            ],
+        )
+        raw = response.choices[0].message.content or "{}"
+        result = json.loads(raw)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"OpenAI error: {e}")
+
+    return {
+        "reply": result.get("reply", "I couldn't understand that. Please try again."),
+        "action": result.get("action", None),
+    }
+
+
+class VoiceSpeakRequest(BaseModel):
+    text: str
+
+
+@app.post("/voice/speak")
+async def voice_speak(body: VoiceSpeakRequest):
+    import base64
+    deepgram_key = os.environ["DEEPGRAM_API_KEY"]
+    try:
+        r = httpx.post(
+            "https://api.deepgram.com/v1/speak?model=aura-asteria-en",
+            headers={
+                "Authorization": f"Token {deepgram_key}",
+                "Content-Type": "application/json",
+            },
+            json={"text": body.text},
+            timeout=30,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"TTS request failed: {e}")
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"TTS error: {r.text}")
+    return {"audio": base64.b64encode(r.content).decode()}

@@ -22,6 +22,7 @@ import {
   type User,
 } from '@/lib/api';
 import { getTodayISO, getWeekDates, getWeekRange } from '@/utils/dates';
+import VoiceAssistantModal from '@/components/VoiceAssistantModal';
 
 // ─── Task item with optional subtasks ─────────────────────────────────────────
 
@@ -212,8 +213,30 @@ function JanitorHome() {
     );
   };
 
-  const [showAllTasks, setShowAllTasks]       = useState(false);
-  const [showCompleted, setShowCompleted]     = useState(false);
+  const [showAllTasks, setShowAllTasks]         = useState(false);
+  const [showCompleted, setShowCompleted]       = useState(false);
+  const [assistantVisible, setAssistantVisible] = useState(false);
+
+  const handleVoiceTaskComplete = (taskId: string) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: true } : t)));
+  };
+
+  const handleVoiceSubtaskComplete = (subtaskId: string) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        const newSubtasks = (t.subtasks ?? []).map((s) =>
+          s.id === subtaskId ? { ...s, completed: true } : s
+        );
+        const allNowDone = newSubtasks.every((s) => s.completed);
+        if (allNowDone && !t.completed) {
+          toggleTaskComplete(t.id).then((updated) => {
+            setTasks((p) => p.map((tt) => (tt.id === t.id ? { ...tt, completed: updated.completed } : tt)));
+          });
+        }
+        return { ...t, subtasks: newSubtasks };
+      })
+    );
+  };
 
   const weekDates = getWeekDates();
   const incompleteTasks = tasks.filter((t) => !t.completed);
@@ -226,7 +249,15 @@ function JanitorHome() {
   }, {});
 
   return (
+    <View style={{ flex: 1 }}>
     <SafeAreaView style={styles.safe}>
+      <VoiceAssistantModal
+        visible={assistantVisible}
+        onClose={() => setAssistantVisible(false)}
+        tasks={tasks}
+        onTaskCompleted={handleVoiceTaskComplete}
+        onSubtaskCompleted={handleVoiceSubtaskComplete}
+      />
       <View style={styles.toggleRow}>
         <TouchableOpacity
           style={[styles.toggleBtn, tab === 'today' && styles.toggleBtnActive]}
@@ -306,6 +337,17 @@ function JanitorHome() {
         </ScrollView>
       )}
     </SafeAreaView>
+
+    {/* Floating mic button */}
+    <TouchableOpacity
+      style={styles.fab}
+      onPress={() => setAssistantVisible(true)}
+      accessibilityRole="button"
+      accessibilityLabel="Open voice assistant"
+      accessibilityHint="Ask a question about your tasks by speaking">
+      <Text style={styles.fabIcon}>🎤</Text>
+    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -503,4 +545,22 @@ const styles = StyleSheet.create({
   completedHeaderText: { fontSize: 13, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5 },
   sectionLabel:       { fontSize: 12, fontWeight: '700', color: '#aaa', marginVertical: 8, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1 },
   emptyText:          { textAlign: 'center', color: '#aaa', fontSize: 15, marginTop: 60 },
+
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Green.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabIcon: { fontSize: 28 },
 });

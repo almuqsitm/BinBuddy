@@ -153,6 +153,39 @@ export async function getOrGenerateGarbagePoints(taskId: string): Promise<Garbag
   return res.json();
 }
 
+export async function speakText(text: string): Promise<{ audio: string }> {
+  const res = await fetch(`${API_BASE}/voice/speak`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function transcribeAudio(audioUri: string): Promise<{ transcript: string }> {
+  const form = new FormData();
+  form.append('file', { uri: audioUri, name: 'audio.m4a', type: 'audio/m4a' } as any);
+  const res = await fetch(`${API_BASE}/voice/transcribe`, { method: 'POST', body: form });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export type VoiceAction = { type: 'complete_task' | 'complete_subtask'; id: string } | null;
+
+export async function voiceChat(
+  message: string,
+  tasks: Task[],
+): Promise<{ reply: string; action: VoiceAction }> {
+  const res = await fetch(`${API_BASE}/voice/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, tasks }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function collectGarbagePoint(pointId: string, userId: string): Promise<GarbagePoint> {
   const res = await fetch(`${API_BASE}/garbage-points/${pointId}/collect`, {
     method: 'PATCH',
