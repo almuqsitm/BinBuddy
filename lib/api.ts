@@ -186,6 +186,27 @@ export async function voiceChat(
   return res.json();
 }
 
+export type ScanMatch = {
+  object_label: string;
+  task_id: string;
+  task_title: string;
+  x_percent: number;
+  y_percent: number;
+};
+
+export async function scanRoom(
+  imageBase64: string,
+  tasks: Task[],
+): Promise<{ matches: ScanMatch[] }> {
+  const res = await fetch(`${API_BASE}/vision/scan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageBase64, tasks }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function collectGarbagePoint(pointId: string, userId: string): Promise<GarbagePoint> {
   const res = await fetch(`${API_BASE}/garbage-points/${pointId}/collect`, {
     method: 'PATCH',

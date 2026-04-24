@@ -11,11 +11,12 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "BinBuddy needs microphone access so you can ask questions about your tasks by speaking."
+        "NSMicrophoneUsageDescription": "BinBuddy needs microphone access so you can ask questions about your tasks by speaking.",
+        "NSCameraUsageDescription": "BinBuddy needs camera access to scan your room and match what you see to your tasks."
       }
     },
     "android": {
-      "permissions": ["android.permission.RECORD_AUDIO"],
+      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.CAMERA"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -32,6 +33,7 @@
     "plugins": [
       "expo-router",
       ["expo-av", { "microphonePermission": "BinBuddy needs microphone access so you can ask questions about your tasks by speaking." }],
+      ["expo-camera", { "cameraPermission": "BinBuddy needs camera access to scan your room and match objects to your tasks." }],
       [
         "expo-splash-screen",
         {

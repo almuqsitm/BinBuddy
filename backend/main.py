@@ -363,6 +363,60 @@ or
     }
 
 
+class ScanRequest(BaseModel):
+    image: str  # base64 JPEG
+    tasks: list
+
+
+@app.post("/vision/scan")
+def scan_room(body: ScanRequest):
+    task_lines = []
+    for t in body.tasks:
+        location = t.get('location') or ''
+        loc_part = f" location=\"{location}\"" if location else ""
+        task_lines.append(
+            f"- id={t.get('id')} title=\"{t.get('title')}\"{loc_part} completed={t.get('completed')}"
+        )
+    tasks_context = "\n".join(task_lines) if task_lines else "No active tasks."
+
+    system_prompt = f"""You are an AI assistant helping a janitor. Analyze the image and match visible objects or surfaces to the janitor's active task list below.
+
+Active tasks:
+{tasks_context}
+
+Rules:
+- Match by context, not just exact names. A visible floor matches any sweep/mop/clean-floor task. A sink matches clean-sink tasks. A trash bin matches garbage-collection tasks. A counter or table matches wipe-down tasks.
+- Only match tasks that are NOT already completed (completed=False).
+- Estimate x_percent (0.0=left edge, 1.0=right edge) and y_percent (0.0=top edge, 1.0=bottom edge) for the center of the matched object or surface in the image.
+- Return an empty matches array if nothing relevant is visible.
+
+Respond with valid JSON only in this exact shape:
+{{"matches": [{{"object_label": "<what you see>", "task_id": "<id>", "task_title": "<title>", "x_percent": 0.5, "y_percent": 0.5}}]}}"""
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            max_tokens=600,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{body.image}"},
+                    },
+                    {"type": "text", "text": "Scan this image and match what you see to the tasks listed above."},
+                ]},
+            ],
+        )
+        raw = response.choices[0].message.content or "{}"
+        result = json.loads(raw)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"OpenAI error: {e}")
+
+    return {"matches": result.get("matches", [])}
+
+
 class VoiceSpeakRequest(BaseModel):
     text: str
 
