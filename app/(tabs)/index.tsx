@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { Green } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -159,15 +159,21 @@ function JanitorHome() {
   const today = getTodayISO();
   const { from, to } = getWeekRange(weekOffset);
 
-  useEffect(() => {
+  const loadTasks = useCallback((showSpinner = true) => {
     if (!user) return;
-    setLoading(true);
+    if (showSpinner) setLoading(true);
     const fromDate = tab === 'today' ? today : from;
     const toDate   = tab === 'today' ? today : to;
     getUserTasks(user.id, fromDate, toDate)
       .then(setTasks)
       .finally(() => setLoading(false));
-  }, [tab, user, weekOffset]);
+  }, [user, tab, today, from, to]);
+
+  // Initial load + reload when tab/week changes
+  useEffect(() => { loadTasks(); }, [tab, user, weekOffset]);
+
+  // Silent refresh when screen regains focus (e.g. returning from garbage map)
+  useFocusEffect(useCallback(() => { loadTasks(false); }, [loadTasks]));
 
   const handleToggleTask = async (taskId: string) => {
     const updated = await toggleTaskComplete(taskId);

@@ -23,12 +23,12 @@ import {
 // ─── Floor plan layout (% of map dimensions) ─────────────────────────────────
 
 const ROOMS = [
-  { id: 'entrance',  label: 'Entrance',     x: 0,  y: 0,  w: 100, h: 13 },
-  { id: 'office',    label: 'Office',        x: 0,  y: 16, w: 46,  h: 35 },
-  { id: 'meeting',   label: 'Meeting Room',  x: 54, y: 16, w: 46,  h: 35 },
-  { id: 'breakroom', label: 'Break Room',    x: 0,  y: 54, w: 46,  h: 35 },
-  { id: 'bathroom',  label: 'Bathroom',      x: 54, y: 54, w: 46,  h: 35 },
-  { id: 'corridor',  label: 'Corridor',      x: 0,  y: 92, w: 100, h: 8  },
+  { id: 'entrance',  label: 'Entrance',     x: 0,  y: 0,  w: 100, h: 12 },
+  { id: 'office',    label: 'Office',        x: 0,  y: 14, w: 46,  h: 35 },
+  { id: 'meeting',   label: 'Meeting Room',  x: 54, y: 14, w: 46,  h: 35 },
+  { id: 'breakroom', label: 'Break Room',    x: 0,  y: 51, w: 46,  h: 35 },
+  { id: 'bathroom',  label: 'Bathroom',      x: 54, y: 51, w: 46,  h: 35 },
+  { id: 'corridor',  label: 'Corridor',      x: 0,  y: 88, w: 100, h: 12 },
 ];
 
 const ICON_SIZE = 44;
